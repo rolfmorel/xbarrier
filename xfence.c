@@ -48,6 +48,8 @@
 static inline void dbg(const char* fmt, ...) { }
 #endif
 
+#define SIGNUM(x) (((x) > 0) - ((x) < 0))
+
 #define error(msg, ...) do { \
 		fprintf(stderr, "Error: "msg"\n", ##__VA_ARGS__); \
 		exit(1); \
@@ -141,6 +143,8 @@ static void handle_barrier_leave(XIBarrierEvent* event)
 
 static void do_action(Action* action, XIBarrierEvent* event) {
 	switch (action->type) {
+	case ACTION_NONE:
+        break;
 	case ACTION_RELEASE:
 		XIBarrierReleasePointer(dpy, event->deviceid, event->barrier, event->eventid);
 		XFlush(dpy);
@@ -162,7 +166,7 @@ static void do_action(Action* action, XIBarrierEvent* event) {
 //			break;
 //		}
 		break;
-	case ACTION_WARP:;
+	case ACTION_WARP:{
 		Vector cursor_disp = {
 			x: event->root_x - barrier.pos.x,
 			y: event->root_y - barrier.pos.y,
@@ -179,7 +183,26 @@ static void do_action(Action* action, XIBarrierEvent* event) {
 		XWarpPointer(dpy, None, rootwin, 0, 0, 0, 0,
 			(int) cursor_pos.x, (int) cursor_pos.y);
 		XFlush(dpy);
-		break;
+		break;}
+	case ACTION_JUMP:{
+		Vector cursor_disp = {
+			x: event->root_x - barrier.pos.x,
+			y: event->root_y - barrier.pos.y,
+		};
+        double x_disp = SIGNUM(action->bar.disp.x) * \
+                MIN(abs(cursor_disp.x), abs(action->bar.disp.x));
+        double y_disp = SIGNUM(action->bar.disp.y) * \
+                MIN(abs(cursor_disp.y), abs(action->bar.disp.y));
+
+		Vector cursor_pos = {
+			x: action->bar.pos.x + x_disp,
+			y: action->bar.pos.y + y_disp,
+		};
+		
+		XWarpPointer(dpy, None, rootwin, 0, 0, 0, 0,
+			(int) cursor_pos.x, (int) cursor_pos.y);
+		XFlush(dpy);
+		break;}
 	}
 }
 
@@ -317,6 +340,8 @@ static int parse_condition(int cur_arg, int argc, char** argv, Condition* condit
 			argv[cur_arg]);
 	if (++cur_arg >= argc) return cur_arg;
 
+    Bool read_bar = False;
+
 	if (strcmp(argv[cur_arg], "release") == 0) cur_arg++;
 	else if (strcmp(argv[cur_arg], "print") == 0) {
 		cur_arg++;
@@ -324,7 +349,14 @@ static int parse_condition(int cur_arg, int argc, char** argv, Condition* condit
 	} else if (strcmp(argv[cur_arg], "warp") == 0) {
 		cur_arg++;
 		condition->action.type = ACTION_WARP;
+        read_bar = True;
+	} else if (strcmp(argv[cur_arg], "jump") == 0) {
+		cur_arg++;
+		condition->action.type = ACTION_JUMP;
+        read_bar = True;
+    }
 
+    if (read_bar) {
 		Vector* pos = &condition->action.bar.pos;
 		Vector* disp = &condition->action.bar.disp;
 
