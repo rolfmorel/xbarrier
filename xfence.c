@@ -398,12 +398,6 @@ static void set_options(int argc, char** argv)
 		if (strcmp(argv[cur_arg], "-t") == 0) {
 			cur_arg++;
 			cur_arg = parse_condition(cur_arg, argc, argv, (Condition *) &doubletap);
-//			doubletap.action.type = ACTION_RELEASE;
-//			doubletap.threshold = strtod(argv[++cur_arg], &end);
-//			if (*end || doubletap.threshold < 0.0)
-//				error("Invalid threshold '%s' (must be numeric and non-negative)",
-//					argv[cur_arg]);
-//			cur_arg++;
 			continue;
 		}
 
