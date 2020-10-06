@@ -75,18 +75,24 @@ static struct {
 /* What action is initiated on satifying a condition */
 typedef enum {
 	ACTION_NONE = 0,
+    // -> do nothing, the default action
 	ACTION_RELEASE,
+    // -> let pointer pass through the barrier
 	ACTION_PRINT,
-	ACTION_WARP
+    // -> print a location to stdout
+	ACTION_WARP,    
+    // map position within barrier to another line segment, with scaling
+	ACTION_JUMP,
+    // map position within barrier to another line segment, no scaling
 } ActionType;
 
 typedef union {
 	ActionType type;
 	struct {
-		ActionType __type; // only when type == __type == ACTION_WARP
+		ActionType __type; // either ACTION_WARP or ACTION_JUMP
 		Vector pos; // the first endpoint defining the line segment
 		Vector disp; // when added to pos gives the second endpoint
-	} warp;
+	} bar;
 } Action;
 
 typedef struct {
@@ -166,8 +172,8 @@ static void do_action(Action* action, XIBarrierEvent* event) {
 			(barrier.disp.x + barrier.disp.y);
 
 		Vector cursor_pos = {
-			x: action->warp.pos.x + ratio * action->warp.disp.x,
-			y: action->warp.pos.y + ratio * action->warp.disp.y,
+			x: action->bar.pos.x + ratio * action->bar.disp.x,
+			y: action->bar.pos.y + ratio * action->bar.disp.y,
 		};
 		
 		XWarpPointer(dpy, None, rootwin, 0, 0, 0, 0,
@@ -319,8 +325,8 @@ static int parse_condition(int cur_arg, int argc, char** argv, Condition* condit
 		cur_arg++;
 		condition->action.type = ACTION_WARP;
 
-		Vector* pos = &condition->action.warp.pos;
-		Vector* disp = &condition->action.warp.disp;
+		Vector* pos = &condition->action.bar.pos;
+		Vector* disp = &condition->action.bar.disp;
 
 		pos->x = strtod(argv[cur_arg++], &end);
 		if (!*end) pos->y = strtod(argv[cur_arg++], &end);
