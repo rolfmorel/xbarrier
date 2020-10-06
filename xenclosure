@@ -28,6 +28,8 @@ function monitor-specs {
 	xrandr | grep ' connected' | grep "[^ ]* (" -o | cut -d ' ' -f 1
 }
 
+action="-t 1.5 print -d 200"
+
 [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return # rest of file is not for sourcing
 
 for monitor_spec in $(monitor-specs); do

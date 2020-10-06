@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-source ./xenclosure
-
-action="-t 3 print -d 200"
+source ./xenclosure # imports action and monitor-specs
 
 for monitor_spec in $(monitor-specs); do
 	echo $monitor_spec
