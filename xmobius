@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+source ./xenclosure # imports action and monitor-specs
+
+for monitor_spec in $(monitor-specs); do
+	echo $monitor_spec
+	read topleft_x topleft_y \
+			 topright_x topright_y \
+			 bottomleft_x bottomleft_y \
+			 bottomright_x bottomright_y < <(monitor-coords "$monitor_spec")
+
+  ./xfence $topleft_x $topleft_y $topright_x $topright_y +y $action warp $bottomleft_x $bottomleft_y $bottomright_x $bottomright_y &
+  ./xfence $topright_x $topright_y $bottomright_x $bottomright_y -x $action warp $bottomleft_x $bottomleft_y $topleft_x $topleft_y  &
+  ./xfence $bottomright_x $bottomright_y $bottomleft_x $bottomleft_y -y $action warp $topright_x $topright_y $topleft_x $topleft_y &
+  ./xfence $bottomleft_x $bottomleft_y $topleft_x $topleft_y +x $action warp $topright_x $topright_y $bottomright_x $bottomright_y &
+done
+
+trap 'kill $(jobs -p); exit' INT
+
+wait

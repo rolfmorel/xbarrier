@@ -84,14 +84,12 @@ typedef enum {
     // -> print a location to stdout
 	ACTION_WARP,    
     // map position within barrier to another line segment, with scaling
-	ACTION_JUMP,
-    // map position within barrier to another line segment, no scaling
 } ActionType;
 
 typedef union {
 	ActionType type;
 	struct {
-		ActionType __type; // either ACTION_WARP or ACTION_JUMP
+		ActionType __type; // either ACTION_WARP
 		Vector pos; // the first endpoint defining the line segment
 		Vector disp; // when added to pos gives the second endpoint
 	} bar;
@@ -166,7 +164,7 @@ static void do_action(Action* action, XIBarrierEvent* event) {
 //			break;
 //		}
 		break;
-	case ACTION_WARP:{
+	case ACTION_WARP:
 		Vector cursor_disp = {
 			x: event->root_x - barrier.pos.x,
 			y: event->root_y - barrier.pos.y,
@@ -183,26 +181,7 @@ static void do_action(Action* action, XIBarrierEvent* event) {
 		XWarpPointer(dpy, None, rootwin, 0, 0, 0, 0,
 			(int) cursor_pos.x, (int) cursor_pos.y);
 		XFlush(dpy);
-		break;}
-	case ACTION_JUMP:{
-		Vector cursor_disp = {
-			x: event->root_x - barrier.pos.x,
-			y: event->root_y - barrier.pos.y,
-		};
-        double x_disp = SIGNUM(action->bar.disp.x) * \
-                MIN(abs(cursor_disp.x), abs(action->bar.disp.x));
-        double y_disp = SIGNUM(action->bar.disp.y) * \
-                MIN(abs(cursor_disp.y), abs(action->bar.disp.y));
-
-		Vector cursor_pos = {
-			x: action->bar.pos.x + x_disp,
-			y: action->bar.pos.y + y_disp,
-		};
-		
-		XWarpPointer(dpy, None, rootwin, 0, 0, 0, 0,
-			(int) cursor_pos.x, (int) cursor_pos.y);
-		XFlush(dpy);
-		break;}
+		break;
 	}
 }
 
@@ -346,14 +325,7 @@ static int parse_condition(int cur_arg, int argc, char** argv, Condition* condit
 	} else if (strcmp(argv[cur_arg], "warp") == 0) {
 		cur_arg++;
 		condition->action.type = ACTION_WARP;
-        read_bar = True;
-	} else if (strcmp(argv[cur_arg], "jump") == 0) {
-		cur_arg++;
-		condition->action.type = ACTION_JUMP;
-        read_bar = True;
-    }
 
-    if (read_bar) {
 		Vector* pos = &condition->action.bar.pos;
 		Vector* disp = &condition->action.bar.disp;
 
