@@ -118,7 +118,7 @@ static struct {
 
 static Display* dpy;
 static Window rootwin;
-static int xi2_opcode, xrr_opcode, xrr_event_base;
+static int xi2_opcode;
 
 /* Return the current seconds-since-epoch time as a double */
 static inline double dnow(void)
@@ -131,7 +131,8 @@ static inline double dnow(void)
 
 static void handle_barrier_leave(XIBarrierEvent* event)
 {
-	dbg("BarrierLeave [%lu], delta: %.2f/%.2f\n", event->barrier, event->dx, event->dy);
+	dbg("BarrierLeave, cursor: %.2f %.2f, delta: %.2f %.2f\n",
+		event->root_x, event->root_y, event->dx, event->dy);
 
 	distance.dx = 0;
 	distance.dy = 0;
@@ -148,23 +149,9 @@ static void do_action(Action* action, XIBarrierEvent* event) {
 		XFlush(dpy);
 		break;
 	case ACTION_PRINT:
-		printf("PRINTING!!!\n");
-//		switch (releasemode) {
-//		case REL_DISTANCE:
-//			printf("XID: %ld, REL_DISTANCE: %s, x: %.0f, y: %.0f, dist: %.0f\n",
-//				pbi.bar, dir_name, event->root_x, event->root_y, pbi.distance);
-//			break;
-//		case REL_SPEED:
-//			printf("XID: %ld, REL_SPEED: %s, x: %.0f, y: %.0f, delta: %.2f/%.2f\n",
-//				pbi.bar, dir_name, event->root_x, event->root_y, event->dx, event->dy);
-//			break;
-//		case REL_DOUBLETAP:
-//			printf("XID: %ld, REL_DOUBLETAP: %s, x: %.0f, y: %.0f, delay: %.2f\n",
-//				pbi.bar, dir_name, event->root_x, event->root_y, now - pbi.taphist.last_tap);
-//			break;
-//		}
+        printf("%.0f %.0f\n", event->root_x, event->root_y);
 		break;
-	case ACTION_WARP:
+	case ACTION_WARP:{
 		Vector cursor_disp = {
 			x: event->root_x - barrier.pos.x,
 			y: event->root_y - barrier.pos.y,
@@ -181,7 +168,7 @@ static void do_action(Action* action, XIBarrierEvent* event) {
 		XWarpPointer(dpy, None, rootwin, 0, 0, 0, 0,
 			(int) cursor_pos.x, (int) cursor_pos.y);
 		XFlush(dpy);
-		break;
+		break;}
 	}
 }
 
@@ -191,14 +178,15 @@ static void handle_barrier_hit(XIBarrierEvent* event)
 	const double dx = event->dx;
 	const double dy = event->dy;
 
-	dbg("BarrierHit [%lu], cursor: %.4f %.4f, delta: %.2f/%.2f\n",
-		event->root_x, event->root_y, event->barrier, event->dx, event->dy);
+	dbg("BarrierHit, cursor: %.2f %.2f, delta: %.2f %.2f\n",
+		event->root_x, event->root_y, event->dx, event->dy);
 
 	// if cursor outside of barrier, project it onto barrier
+    // FIXME: should really be a more elegant solution...
 	if (barrier.disp.x == 0 &&
 		!(barrier.pos.x <= event->root_x &&
 		event->root_x <= barrier.pos.x + barrier.disp.x)) {
-		dbg("BarrierHit outside barrier: %.4f %.4f ", event->root_x, event->root_y);
+		dbg("outside barrier: %.2f %.2f ", event->root_x, event->root_y);
 
 		event->root_x = barrier.pos.x;
 		double high_y = MAX(barrier.pos.y, barrier.pos.y + barrier.disp.y);
@@ -209,12 +197,12 @@ static void handle_barrier_hit(XIBarrierEvent* event)
 		if (event->root_y < low_y)
 			event->root_y = low_y;
 
-		dbg("mapped to: %.4f %.4f\n", event->root_x, event->root_y);
+		dbg("mapped to: %.2f %.2f\n", event->root_x, event->root_y);
 	}
 	if (barrier.disp.y == 0 &&
 		!(barrier.pos.y <= event->root_y &&
 		event->root_y <= barrier.pos.y + barrier.disp.y)) {
-		dbg("BarrierHit outside barrier: %.4f %.4f ", event->root_x, event->root_y);
+		dbg("outside barrier: %.2f %.2f ", event->root_x, event->root_y);
 
 		event->root_y = barrier.pos.y;
 		double high_x = MAX(barrier.pos.x, barrier.pos.x + barrier.disp.x);
@@ -225,7 +213,7 @@ static void handle_barrier_hit(XIBarrierEvent* event)
 		if (event->root_x < low_x)
 			event->root_x = low_x;
 
-		dbg("mapped to: %.4f %.4f\n", event->root_x, event->root_y);
+		dbg("mapped to: %.2f %.2f\n", event->root_x, event->root_y);
 		event->root_y = barrier.pos.y;
 	}
 
@@ -241,13 +229,6 @@ static void handle_barrier_hit(XIBarrierEvent* event)
 		if (euclidian > distance.threshold) {
 			do_action(&distance.action, event);
 		}
-
-		/* TODO: check if needs fix
-		 * Apparent movement *away* from the barrier on a *hit* event seems to
-		 * happen sometimes; ignore it.
-		 */
-		//if (d < 0.0)
-		//	return;
 	}
 
 	double speed = sqrt(dx * dx + dy * dy);
@@ -265,13 +246,10 @@ static void handle_barrier_hit(XIBarrierEvent* event)
 	doubletap.timestamp_last_entered = now;
 }
 
-/* Check for necessary extensions, initializing {xi2,xrr}_* globals. */
+/* Check for necessary extensions */
 static void check_extensions(void)
 {
 	int major, minor, opcode, evt, err;
-
-	if (!XQueryExtension(dpy, "RANDR", &xrr_opcode, &evt, &err))
-		error("XRandr extension not found");
 
 	if (!XQueryExtension(dpy, "XFIXES", &opcode, &evt, &err))
 		error("XFixes extension not found");
@@ -291,18 +269,25 @@ static void check_extensions(void)
 
 static void usage(FILE* out, int full)
 {
-	fprintf(out, "Usage: %s X1 Y1 X2 Y2 [DIRECTION|DIRECTION|..] [ -h | -d DISTANCE [ACTION] | -s SPEED [ACTION] | -m SECONDS [ACTION] ]\n", progname);
-	// no action means just fenced in
-	// DIRECTION is a unrestricted direction allowed to leave barrier
-	// ACTION is either 'release' (the default), or 'print', or 'warp(X3,Y3,X4,Y4)'
+	fprintf(out, "Usage: %s X1 Y1 X2 Y2 DIRECTION DIRECTION* [ -h | -d DISTANCE [ACTION] | -s MAX_SPEED [ACTION] | -S MIN_SPEED [ACTION] | -m SECONDS [ACTION] ]\n", progname);
 	if (!full)
 		return;
-
+    fprintf(out, "\n");
+	fprintf(out, "Arguments:\n");
+    fprintf(out, "  X1 Y1 X2 Y2 are the coordinates of a pixel wide bar which acts as a barrier\n");
+    fprintf(out, "\n");
+    fprintf(out, "  DIRECTION is one of -x, +x, -y, +y, each indicating a direction in which the cursor is not obstructed\n");
+    fprintf(out, "\n");
 	fprintf(out, "Flags:\n");
-	fprintf(out, "\t-h %-12s print this usage message\n", "");
-	fprintf(out, "\t-d %-12s release after DISTANCE pixels of (suppressed) pointer travel\n", "DISTANCE");
-	fprintf(out, "\t-s %-12s release when cursor speed (against barrier) exceeds SPEED\n", "SPEED");
-	fprintf(out, "\t-m %-12s release on two taps against barrier within SECONDS seconds\n", "SECONDS");
+	fprintf(out, "  -h %-12s print this usage message\n", "");
+	fprintf(out, "  -d %-12s perform ACTION after DISTANCE pixels of (suppressed) pointer travel\n", "DISTANCE");
+	fprintf(out, "  -s %-12s perform ACTION when cursor speed (against barrier) exceeds SPEED\n", "SPEED");
+	fprintf(out, "  -m %-12s perform ACTION on two taps against barrier within SECONDS seconds\n", "SECONDS");
+    fprintf(out, "\n");
+    fprintf(out, "  ACTION is one of release, print, or warp X3 Y3 X4 Y4\n");
+    fprintf(out, "         release lets the pointer pass through the barrier\n");
+    fprintf(out, "         print only prints an event to stdout\n");
+    fprintf(out, "         warp X3 Y3 X4 Y4 teleports the cursor to this second bar, with a linear scaling between the two bars\n");
 }
 
 static int parse_condition(int cur_arg, int argc, char** argv, Condition* condition) {
@@ -315,8 +300,6 @@ static int parse_condition(int cur_arg, int argc, char** argv, Condition* condit
 		error("Invalid threshold '%s' (must be numeric and non-negative)",
 			argv[cur_arg]);
 	if (++cur_arg >= argc) return cur_arg;
-
-    Bool read_bar = False;
 
 	if (strcmp(argv[cur_arg], "release") == 0) cur_arg++;
 	else if (strcmp(argv[cur_arg], "print") == 0) {
@@ -354,7 +337,8 @@ static void set_options(int argc, char** argv)
 	if (!*end) barrier.disp.y = strtod(argv[4], &end) - barrier.pos.y;
 	if (*end)
 		error("Invalid coordinates (must be numeric and non-negative)");
-	//TODO: check if barrier is valid line segment
+    if (barrier.disp.x != 0 && barrier.disp.y != 0)
+		error("Invalid coordinates (barrier must be one pixel thick)");
 
 	int cur_arg = 5;
 	do {
@@ -459,7 +443,7 @@ int main(int argc, char** argv)
 	xfd = XConnectionNumber(dpy);
 	nfds = xfd + 1;
 
-	dbg("barrier: %.3f %.3f %.3f %.3f\n", 
+	dbg("barrier: %.0f %.0f %.0f %.0f\n", 
 		barrier.pos.x, barrier.pos.y,
 		barrier.pos.x + barrier.disp.x, barrier.pos.y + barrier.disp.y);
 
