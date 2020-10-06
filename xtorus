@@ -9,10 +9,10 @@ for monitor_spec in $(monitor-specs); do
        bottomleft_x bottomleft_y \
        bottomright_x bottomright_y < <(monitor-coords "$monitor_spec")
 
-  ./xfence $topleft_x $topleft_y $topright_x $topright_y +y $action warp $bottomleft_x $bottomleft_y $bottomright_x $bottomright_y &
-  ./xfence $topright_x $topright_y $bottomright_x $bottomright_y -x $action warp $topleft_x $topleft_y $bottomleft_x $bottomleft_y &
-  ./xfence $bottomright_x $bottomright_y $bottomleft_x $bottomleft_y -y $action warp $topright_x $topright_y $topleft_x $topleft_y &
-  ./xfence $bottomleft_x $bottomleft_y $topleft_x $topleft_y +x $action warp $bottomright_x $bottomright_y $topright_x $topright_y &
+  ./xbarrier $topleft_x $topleft_y $topright_x $topright_y +y $action warp $bottomleft_x $bottomleft_y $bottomright_x $bottomright_y &
+  ./xbarrier $topright_x $topright_y $bottomright_x $bottomright_y -x $action warp $topleft_x $topleft_y $bottomleft_x $bottomleft_y &
+  ./xbarrier $bottomright_x $bottomright_y $bottomleft_x $bottomleft_y -y $action warp $topright_x $topright_y $topleft_x $topleft_y &
+  ./xbarrier $bottomleft_x $bottomleft_y $topleft_x $topleft_y +x $action warp $bottomright_x $bottomright_y $topright_x $topright_y &
 done
 
 trap 'kill $(jobs -p); exit' INT

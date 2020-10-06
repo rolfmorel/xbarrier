@@ -1,5 +1,5 @@
 /*
- * xfence -- X pointer barrier Fence.
+ * xbarrier -- X pointer barrier
  *
  * Copyright (c), Rolf Morel <me@rolfmorel.me>
  * Copyright (c), Zev Weiss <zev@bewilderbeest.net>

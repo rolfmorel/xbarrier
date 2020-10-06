@@ -12,11 +12,11 @@ XCFLAGS := $(shell pkg-config --cflags --libs $(XSUBLIBS))
 
 CFLAGS += $(XCFLAGS)
 
-default: xfence
+default: xbarrier
 
-xfence: xfence.c
+xbarrier: xbarrier.c
 	$(CC) -o $@ $< $(CFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f xfence 
+	rm -f xbarrier 
