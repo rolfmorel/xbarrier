@@ -294,9 +294,6 @@ static void check_extensions(void)
 	if (!XQueryExtension(dpy, "RANDR", &xrr_opcode, &evt, &err))
 		error("XRandr extension not found");
 
-	if (!XRRQueryExtension(dpy, &xrr_event_base, &err)) 
-		error("XRandr present...but also not?");
-
 	if (!XQueryExtension(dpy, "XFIXES", &opcode, &evt, &err))
 		error("XFixes extension not found");
 
