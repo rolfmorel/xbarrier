@@ -1,14 +1,15 @@
 /*
- * xdpb -- X Display Pointer Barriers.
+ * xfence -- X pointer barrier Fence.
  *
+ * Copyright (c), Rolf Morel <me@rolfmorel.me>
  * Copyright (c), Zev Weiss <zev@bewilderbeest.net>
  *
- * Sets up pointer barriers at the edges of each display so that it's easier
- * to position the mouse at screen edges (e.g. for scroll bars, etc.).
+ * Sets up a single pointer barrier at specified coordinates.
+ * Has multiple options for releasing the pointer, also at other locations.
+ * Intended to be used by scripts, e.g. to lock the mouse to one monitor.
  *
- * This file began life as a modified version of
- * pointer-barriers-interactive.c by Jasper St. Pierre (not that there's much
- * left of it).
+ * Originally pointer-barriers-interactive.c by Jasper St. Pierre.
+ * Subsequently it was adapted into xdpd, by Zev Weiss.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
