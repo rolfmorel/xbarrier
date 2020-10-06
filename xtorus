@@ -3,11 +3,11 @@
 source ./xenclosure # imports action and monitor-specs
 
 for monitor_spec in $(monitor-specs); do
-	echo $monitor_spec
-	read topleft_x topleft_y \
-			 topright_x topright_y \
-			 bottomleft_x bottomleft_y \
-			 bottomright_x bottomright_y < <(monitor-coords "$monitor_spec")
+  echo $monitor_spec
+  read topleft_x topleft_y \
+       topright_x topright_y \
+       bottomleft_x bottomleft_y \
+       bottomright_x bottomright_y < <(monitor-coords "$monitor_spec")
 
   ./xfence $topleft_x $topleft_y $topright_x $topright_y +y $action warp $bottomleft_x $bottomleft_y $bottomright_x $bottomright_y &
   ./xfence $topright_x $topright_y $bottomright_x $bottomright_y -x $action warp $topleft_x $topleft_y $bottomleft_x $bottomleft_y &
