@@ -143,13 +143,13 @@ static void handle_barrier_leave(XIBarrierEvent* event)
 static void do_action(Action* action, XIBarrierEvent* event) {
   switch (action->type) {
   case ACTION_NONE:
-        break;
+    break;
   case ACTION_RELEASE:
     XIBarrierReleasePointer(dpy, event->deviceid, event->barrier, event->eventid);
     XFlush(dpy);
     break;
   case ACTION_PRINT:
-        printf("%.0f %.0f\n", event->root_x, event->root_y);
+    printf("%.0f %.0f\n", event->root_x, event->root_y);
     break;
   case ACTION_WARP:{
     Vector cursor_disp = {
@@ -158,15 +158,15 @@ static void do_action(Action* action, XIBarrierEvent* event) {
     };
 
     double ratio = (cursor_disp.x + cursor_disp.y) /
-      (barrier.disp.x + barrier.disp.y);
+                   (barrier.disp.x + barrier.disp.y);
 
     Vector cursor_pos = {
       x: action->bar.pos.x + ratio * action->bar.disp.x,
       y: action->bar.pos.y + ratio * action->bar.disp.y,
     };
-    
+ 
     XWarpPointer(dpy, None, rootwin, 0, 0, 0, 0,
-      (int) cursor_pos.x, (int) cursor_pos.y);
+                 (int) cursor_pos.x, (int) cursor_pos.y);
     XFlush(dpy);
     break;}
   }
@@ -179,13 +179,13 @@ static void handle_barrier_hit(XIBarrierEvent* event)
   const double dy = event->dy;
 
   dbg("BarrierHit, cursor: %.2f %.2f, delta: %.2f %.2f\n",
-    event->root_x, event->root_y, event->dx, event->dy);
+      event->root_x, event->root_y, event->dx, event->dy);
 
   // if cursor outside of barrier, project it onto barrier
     // FIXME: should really be a more elegant solution...
   if (barrier.disp.x == 0 &&
-    !(barrier.pos.x <= event->root_x &&
-    event->root_x <= barrier.pos.x + barrier.disp.x)) {
+      !(barrier.pos.x <= event->root_x &&
+      event->root_x <= barrier.pos.x + barrier.disp.x)) {
     dbg("outside barrier: %.2f %.2f ", event->root_x, event->root_y);
 
     event->root_x = barrier.pos.x;
@@ -200,8 +200,8 @@ static void handle_barrier_hit(XIBarrierEvent* event)
     dbg("mapped to: %.2f %.2f\n", event->root_x, event->root_y);
   }
   if (barrier.disp.y == 0 &&
-    !(barrier.pos.y <= event->root_y &&
-    event->root_y <= barrier.pos.y + barrier.disp.y)) {
+      !(barrier.pos.y <= event->root_y &&
+      event->root_y <= barrier.pos.y + barrier.disp.y)) {
     dbg("outside barrier: %.2f %.2f ", event->root_x, event->root_y);
 
     event->root_y = barrier.pos.y;
@@ -226,23 +226,20 @@ static void handle_barrier_hit(XIBarrierEvent* event)
     // FIXME: should we be using L1 distance instead?
     double euclidian = sqrt(dis_dx * dis_dx + dis_dy * dis_dy);
 
-    if (euclidian > distance.threshold) {
+    if (euclidian > distance.threshold)
       do_action(&distance.action, event);
-    }
   }
 
   double speed = sqrt(dx * dx + dy * dy);
-  if (speed > min_speed.threshold) {
+  if (speed > min_speed.threshold)
     do_action(&min_speed.action, event);
-  }
-  if (speed < max_speed.threshold) {
+  if (speed < max_speed.threshold)
     do_action(&max_speed.action, event);
-  }
 
-  if (doubletap.timestamp_last_entered < doubletap.timestamp_last_left
-    && (now - doubletap.timestamp_last_entered) <= doubletap.threshold) {
+  if (doubletap.timestamp_last_entered < doubletap.timestamp_last_left &&
+      (now - doubletap.timestamp_last_entered) <= doubletap.threshold)
     do_action(&doubletap.action, event);
-  }
+
   doubletap.timestamp_last_entered = now;
 }
 
@@ -272,22 +269,22 @@ static void usage(FILE* out, int full)
   fprintf(out, "Usage: %s X1 Y1 X2 Y2 DIRECTION DIRECTION* [ -h | -d DISTANCE [ACTION] | -s MAX_SPEED [ACTION] | -S MIN_SPEED [ACTION] | -m SECONDS [ACTION] ]\n", progname);
   if (!full)
     return;
-    fprintf(out, "\n");
+  fprintf(out, "\n");
   fprintf(out, "Arguments:\n");
-    fprintf(out, "  X1 Y1 X2 Y2 are the coordinates of a pixel wide bar which acts as a barrier\n");
-    fprintf(out, "\n");
-    fprintf(out, "  DIRECTION is one of -x, +x, -y, +y, each indicating a direction in which the cursor is not obstructed\n");
-    fprintf(out, "\n");
+  fprintf(out, "  X1 Y1 X2 Y2 are the coordinates of a pixel wide bar which acts as a barrier\n");
+  fprintf(out, "\n");
+  fprintf(out, "  DIRECTION is one of -x, +x, -y, +y, each indicating a direction in which the cursor is not obstructed\n");
+  fprintf(out, "\n");
   fprintf(out, "Flags:\n");
   fprintf(out, "  -h %-12s print this usage message\n", "");
   fprintf(out, "  -d %-12s perform ACTION after DISTANCE pixels of (suppressed) pointer travel\n", "DISTANCE");
   fprintf(out, "  -s %-12s perform ACTION when cursor speed (against barrier) exceeds SPEED\n", "SPEED");
   fprintf(out, "  -m %-12s perform ACTION on two taps against barrier within SECONDS seconds\n", "SECONDS");
-    fprintf(out, "\n");
-    fprintf(out, "  ACTION is one of release, print, or warp X3 Y3 X4 Y4\n");
-    fprintf(out, "         release lets the pointer pass through the barrier\n");
-    fprintf(out, "         print only prints an event to stdout\n");
-    fprintf(out, "         warp X3 Y3 X4 Y4 teleports the cursor to this second bar, with a linear scaling between the two bars\n");
+  fprintf(out, "\n");
+  fprintf(out, "  ACTION is one of release, print, or warp X3 Y3 X4 Y4\n");
+  fprintf(out, "         release lets the pointer pass through the barrier\n");
+  fprintf(out, "         print only prints an event to stdout\n");
+  fprintf(out, "         warp X3 Y3 X4 Y4 teleports the cursor to this second bar, with a linear scaling between the two bars\n");
 }
 
 static int parse_condition(int cur_arg, int argc, char** argv, Condition* condition) {
@@ -298,7 +295,7 @@ static int parse_condition(int cur_arg, int argc, char** argv, Condition* condit
 
   if (*end || condition->threshold < 0.0)
     error("Invalid threshold '%s' (must be numeric and non-negative)",
-      argv[cur_arg]);
+          argv[cur_arg]);
   if (++cur_arg >= argc) return cur_arg;
 
   if (strcmp(argv[cur_arg], "release") == 0) cur_arg++;
@@ -444,13 +441,13 @@ int main(int argc, char** argv)
   nfds = xfd + 1;
 
   dbg("barrier: %.0f %.0f %.0f %.0f\n", 
-    barrier.pos.x, barrier.pos.y,
-    barrier.pos.x + barrier.disp.x, barrier.pos.y + barrier.disp.y);
+      barrier.pos.x, barrier.pos.y,
+      barrier.pos.x + barrier.disp.x, barrier.pos.y + barrier.disp.y);
 
   PointerBarrier pb = XFixesCreatePointerBarrier(dpy, rootwin,
-    barrier.pos.x, barrier.pos.y,
-    barrier.pos.x + barrier.disp.x, barrier.pos.y + barrier.disp.y,
-    barrier.directions, 0, NULL);
+      barrier.pos.x, barrier.pos.y,
+      barrier.pos.x + barrier.disp.x, barrier.pos.y + barrier.disp.y,
+      barrier.directions, 0, NULL);
 
   barrier.xid = pb;
 
