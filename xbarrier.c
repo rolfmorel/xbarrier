@@ -266,23 +266,23 @@ static void check_extensions(void)
 
 static void usage(FILE* out, int full)
 {
-  fprintf(out, "Usage: %s X1 Y1 X2 Y2 DIRECTION DIRECTION* [ -h | -d DISTANCE [ACTION] | -s MAX_SPEED [ACTION] | -S MIN_SPEED [ACTION] | -m SECONDS [ACTION] ]\n", progname);
+  fprintf(out, "Usage: %s X1 Y1 X2 Y2 DIRECTION [..] [ -h | -d DISTANCE [ACTION] | -s MAX_SPEED [ACTION] | -S MIN_SPEED [ACTION] | -m SECONDS [ACTION] ]\n", progname);
   if (!full)
     return;
   fprintf(out, "\n");
   fprintf(out, "Arguments:\n");
-  fprintf(out, "  X1 Y1 X2 Y2 are the coordinates of a pixel wide bar which acts as a barrier\n");
-  fprintf(out, "\n");
-  fprintf(out, "  DIRECTION is one of -x, +x, -y, +y, each indicating a direction in which the cursor is not obstructed\n");
+  fprintf(out, "  X1 Y1 X2 Y2 are the coordinates of a pixel wide pointer barrier\n");
+  fprintf(out, "  DIRECTION is one of -x, +x, -y, +y, each indicating a direction in which the pointer is not obstructed\n");
   fprintf(out, "\n");
   fprintf(out, "Flags:\n");
   fprintf(out, "  -h %-12s print this usage message\n", "");
   fprintf(out, "  -d %-12s perform ACTION after DISTANCE pixels of (suppressed) pointer travel\n", "DISTANCE");
-  fprintf(out, "  -s %-12s perform ACTION when cursor speed (against barrier) exceeds SPEED\n", "SPEED");
-  fprintf(out, "  -m %-12s perform ACTION on two taps against barrier within SECONDS seconds\n", "SECONDS");
+  fprintf(out, "  -s %-12s perform ACTION when cursor speed (against barrier) is below MAX_SPEED\n", "MAX_SPEED");
+  fprintf(out, "  -S %-12s perform ACTION when cursor speed (against barrier) exceeds MIN_SPEED\n", "MIN_SPEED");
+  fprintf(out, "  -t %-12s perform ACTION on two taps against barrier within SECONDS seconds\n", "SECONDS");
   fprintf(out, "\n");
   fprintf(out, "  ACTION is one of release, print, or warp X3 Y3 X4 Y4\n");
-  fprintf(out, "         release lets the pointer pass through the barrier\n");
+  fprintf(out, "         release lets the cursor pass through the barrier\n");
   fprintf(out, "         print only prints an event to stdout\n");
   fprintf(out, "         warp X3 Y3 X4 Y4 teleports the cursor to this second bar, with a linear scaling between the two bars\n");
 }
@@ -324,33 +324,7 @@ static int parse_condition(int cur_arg, int argc, char** argv, Condition* condit
 static void set_options(int argc, char** argv)
 {
   char* end;
-
-  if (argc < 6)
-    error("Please provide coordinates and directions");
-
-  barrier.pos.x = strtod(argv[1], &end);
-  if (!*end) barrier.pos.y = strtod(argv[2], &end);
-  if (!*end) barrier.disp.x = strtod(argv[3], &end) - barrier.pos.x;
-  if (!*end) barrier.disp.y = strtod(argv[4], &end) - barrier.pos.y;
-  if (*end)
-    error("Invalid coordinates (must be numeric and non-negative)");
-    if (barrier.disp.x != 0 && barrier.disp.y != 0)
-    error("Invalid coordinates (barrier must be one pixel thick)");
-
-  int cur_arg = 5;
-  do {
-    if (strcmp(argv[cur_arg], "+x") == 0)
-      barrier.directions |= BarrierPositiveX;
-    else if (strcmp(argv[cur_arg], "-x") == 0)
-      barrier.directions |= BarrierNegativeX;
-    else if (strcmp(argv[cur_arg], "+y") == 0)
-      barrier.directions |= BarrierPositiveY;
-    else if (strcmp(argv[cur_arg], "-y") == 0)
-      barrier.directions |= BarrierNegativeY;
-    else if (cur_arg == 5)
-      error("Argument '%s' needs to be a valid direction", argv[cur_arg]);
-    else break;
-  } while (++cur_arg < argc);
+  int cur_arg = 1;
 
   while (cur_arg < argc) {
     if (strcmp(argv[cur_arg], "-h") == 0) {
@@ -358,32 +332,50 @@ static void set_options(int argc, char** argv)
       exit(0);
     }
 
-    if (strcmp(argv[cur_arg], "-d") == 0) {
+    if (strcmp(argv[cur_arg], "+x") == 0) {
+      barrier.directions |= BarrierPositiveX;
       cur_arg++;
-      cur_arg = parse_condition(cur_arg, argc, argv, (Condition *) &distance);
+    } else if (strcmp(argv[cur_arg], "-x") == 0) {
+      barrier.directions |= BarrierNegativeX;
+      cur_arg++;
+    } else if (strcmp(argv[cur_arg], "+y") == 0) {
+      barrier.directions |= BarrierPositiveY;
+      cur_arg++;
+    } else if (strcmp(argv[cur_arg], "-y") == 0) {
+      barrier.directions |= BarrierNegativeY;
+      cur_arg++;
+    } else if (strcmp(argv[cur_arg], "-d") == 0)
+      cur_arg = parse_condition(++cur_arg, argc, argv, (Condition *) &distance);
+    else if (strcmp(argv[cur_arg], "-s") == 0)
+      cur_arg = parse_condition(++cur_arg, argc, argv, &max_speed);
+    else if (strcmp(argv[cur_arg], "-S") == 0)
+      cur_arg = parse_condition(++cur_arg, argc, argv, &min_speed);
+    else if (strcmp(argv[cur_arg], "-t") == 0)
+      cur_arg = parse_condition(++cur_arg, argc, argv, (Condition *) &doubletap);
+    else {
+      int coord_arg = cur_arg;
+      barrier.pos.x = strtod(argv[coord_arg++], &end);
+      if (!*end && coord_arg < argc)
+        barrier.pos.y = strtod(argv[coord_arg++], &end);
+      if (!*end && coord_arg < argc)
+        barrier.disp.x = strtod(argv[coord_arg++], &end) - barrier.pos.x;
+      if (!*end && coord_arg < argc)
+        barrier.disp.y = strtod(argv[coord_arg++], &end) - barrier.pos.y;
+      if (coord_arg != cur_arg + 4)
+        error("Not enough coordinates provided");
+      cur_arg = coord_arg;
+      if (*end)
+        error("Argument '%s' not recognized", argv[--coord_arg]);
       continue;
     }
 
-    if (strcmp(argv[cur_arg], "-s") == 0) {
-      cur_arg++;
-      cur_arg = parse_condition(cur_arg, argc, argv, &max_speed);
-      continue;
-    }
-
-    if (strcmp(argv[cur_arg], "-S") == 0) {
-      cur_arg++;
-      cur_arg = parse_condition(cur_arg, argc, argv, &min_speed);
-      continue;
-    }
-
-    if (strcmp(argv[cur_arg], "-t") == 0) {
-      cur_arg++;
-      cur_arg = parse_condition(cur_arg, argc, argv, (Condition *) &doubletap);
-      continue;
-    }
-
-    error("Argument '%s' not recognized", argv[cur_arg]);
   }
+
+  if (barrier.directions == 0)
+    error("At least one unobstructed barrier DIRECTION required");
+
+  if (barrier.disp.x != 0 && barrier.disp.y != 0)
+    error("Invalid coordinates (barrier must be one pixel thick)");
 }
 
 
