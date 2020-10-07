@@ -4,7 +4,7 @@
  * Copyright (c), Rolf Morel <me@rolfmorel.me>
  * Copyright (c), Zev Weiss <zev@bewilderbeest.net>
  *
- * Sets up a single pointer barrier at specified coordinates.
+ * Sets up a single X pointer barrier at specified coordinates.
  * Has multiple options for releasing the pointer, also at other locations.
  * Intended to be used by scripts, e.g. to lock the mouse to one monitor.
  *
